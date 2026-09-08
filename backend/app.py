@@ -101,4 +101,17 @@ def get_image(photo_id):
     return Response(obj["Body"].read(), mimetype=obj.get("ContentType", "application/octet-stream"))
 
 
+@app.delete("/api/photos/<int:photo_id>")
+def delete_photo(photo_id):
+    with db() as conn:
+        row = conn.execute(
+            "DELETE FROM photos WHERE id = %s RETURNING object_key", (photo_id,)
+        ).fetchone()
+    if row is None:
+        return jsonify({"error": "not found"}), 404
+
+    s3.delete_object(Bucket=S3_BUCKET, Key=row[0])
+    return jsonify({"id": photo_id})
+
+
 init()

@@ -27,6 +27,15 @@
     await load();
   }
 
+  async function remove(id) {
+    const response = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
+    if (!response.ok) {
+      alert('Delete failed');
+      return;
+    }
+    await load();
+  }
+
   load();
 </script>
 
@@ -47,6 +56,7 @@
         <strong>{photo.filename}</strong>
         <p>{photo.description}</p>
         <small>{photo.tags.join(', ')}</small>
+        <button type="button" on:click={() => remove(photo.id)}>Delete</button>
       </li>
     {/each}
   </ul>

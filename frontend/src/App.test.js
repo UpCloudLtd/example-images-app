@@ -66,6 +66,16 @@ describe('App', () => {
     expect(screen.getAllByText('N/A')).toHaveLength(2);
   });
 
+  it('links to the source repository in the footer', () => {
+    render(App);
+
+    const link = screen.getByRole('link', { name: 'UpCloudLtd / example-images-app' });
+    expect(link.getAttribute('href')).toBe('https://github.com/UpCloudLtd/example-images-app');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(link.closest('footer')).toBeTruthy();
+  });
+
   it('shows the active generator model', async () => {
     render(App);
 

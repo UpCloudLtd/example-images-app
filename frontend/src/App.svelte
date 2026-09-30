@@ -93,6 +93,14 @@
   </ul>
 </main>
 
+<footer>
+  <a
+    href="https://github.com/UpCloudLtd/example-images-app"
+    target="_blank"
+    rel="noopener noreferrer">UpCloudLtd / example-images-app</a
+  >
+</footer>
+
 <style>
   :global(:root) {
     color-scheme: dark;
@@ -200,5 +208,25 @@
   }
   .helptext code.error {
     color: var(--danger-text);
+  }
+  footer {
+    margin: 4rem 1rem 0.666rem;
+    font-family: sans-serif;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  footer a {
+    border-radius: 0.25rem;
+    color: var(--theme-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.666rem;
+    text-decoration: none;
+  }
+  footer a:hover {
+    text-decoration: underline;
+  }
+  footer a:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
   }
 </style>

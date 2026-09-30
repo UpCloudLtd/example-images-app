@@ -1,14 +1,11 @@
 <script>
   import { onMount } from 'svelte';
+  import ImageCard from './ImageCard.svelte';
 
   let images = [];
   let description = '';
   let generating = false;
   let error = '';
-
-  function formatDate(value) {
-    return value ? new Date(value).toLocaleString() : 'Not generated';
-  }
 
   async function load() {
     images = await (await fetch('/api/images')).json();
@@ -73,26 +70,7 @@
 
   <ul>
     {#each images as image (image.id)}
-      <li>
-        {#if image.state === 'ready'}
-          <img src="/api/images/{image.id}/image" alt={image.description} />
-        {:else if image.state === 'error'}
-          <div class="status failed">
-            <strong>Error</strong>
-            <span>{image.state_details}</span>
-          </div>
-        {:else}
-          <div class="status pending">
-            <strong>{image.state === 'generating' ? 'Generating' : 'Pending'}</strong>
-            <span>{image.state_details}</span>
-          </div>
-        {/if}
-        <strong>{image.filename}</strong>
-        <p>{image.description}</p>
-        <small>Requested: {formatDate(image.requested_at)}</small>
-        <small>Generated: {formatDate(image.generated_at)}</small>
-        <button type="button" on:click={() => remove(image.id)}>Delete</button>
-      </li>
+      <ImageCard {image} on:delete={(event) => remove(event.detail)} />
     {/each}
   </ul>
 </main>
@@ -109,6 +87,7 @@
     --border: #2e2939;
     --text: #ece9f2;
     --muted: #a39db0;
+    --danger: #ee6371;
     --danger-text: #fca5b5;
   }
   :global(body) {
@@ -162,7 +141,7 @@
   }
   input:focus-visible,
   button:focus-visible {
-    outline: 2px solid var(--theme-text);
+    outline: 2px solid #fff;
     outline-offset: 2px;
   }
   button {
@@ -180,14 +159,6 @@
     opacity: 0.6;
     cursor: default;
   }
-  li button {
-    background: transparent;
-    color: var(--theme-text);
-  }
-  li button:hover:not(:disabled) {
-    background: var(--theme);
-    color: #fff;
-  }
   ul {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
@@ -195,49 +166,7 @@
     list-style: none;
     padding: 0;
   }
-  li {
-    padding: 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background: var(--surface);
-  }
-  img,
-  .status {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: 0.25rem;
-  }
-  img {
-    object-fit: cover;
-  }
-  .status {
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 0.5rem;
-    box-sizing: border-box;
-    padding: 1rem;
-    text-align: center;
-  }
-  .pending {
-    background: #241c33;
-    color: var(--muted);
-  }
-  .pending strong {
-    color: var(--theme-text);
-  }
-  .failed {
-    background: #3a1620;
-    color: var(--danger-text);
-  }
   [role='alert'] {
     color: var(--danger-text);
-  }
-  .status span {
-    overflow-wrap: anywhere;
-  }
-  small {
-    display: block;
-    color: var(--muted);
   }
 </style>

@@ -60,6 +60,16 @@ describe('App', () => {
     expect(screen.getAllByText('Generated: Not generated')).toHaveLength(2);
   });
 
+  it('shows a link to open only ready images in a new tab', async () => {
+    render(App);
+    await screen.findByAltText('Riva del Garda');
+
+    const links = screen.getAllByRole('link', { name: 'Show' });
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute('href')).toBe('/api/images/4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90/image');
+    expect(links[0].getAttribute('target')).toBe('_blank');
+  });
+
   it('posts the description and reloads images', async () => {
     render(App);
     await screen.findByAltText('Riva del Garda');

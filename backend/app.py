@@ -2,11 +2,17 @@ import os
 import uuid
 
 import boto3
-import psycopg
 from botocore.exceptions import ClientError
 from flask import Flask, Response, jsonify, request
+from sqlalchemy import Text, create_engine, select, text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.engine import make_url
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 DATABASE_URL = os.environ["DATABASE_URL"]
+DATABASE_DRIVER = "postgresql+psycopg"
+engine = create_engine(make_url(DATABASE_URL).set(drivername=DATABASE_DRIVER))
+Session = sessionmaker(bind=engine)
 S3_ENDPOINT_URL = os.environ["S3_ENDPOINT_URL"]
 S3_ACCESS_KEY = os.environ["S3_ACCESS_KEY"]
 S3_SECRET_KEY = os.environ["S3_SECRET_KEY"]
@@ -23,23 +29,22 @@ s3 = boto3.client(
 )
 
 
-def db():
-    return psycopg.connect(DATABASE_URL)
+class Base(DeclarativeBase):
+    pass
+
+
+class Photo(Base):
+    __tablename__ = "photos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default=text("''"))
+    tags: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list, server_default=text("'{}'"))
+    object_key: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 def init():
-    with db() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS photos (
-                id SERIAL PRIMARY KEY,
-                filename TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                tags TEXT[] NOT NULL DEFAULT '{}',
-                object_key TEXT NOT NULL
-            )
-            """
-        )
+    Base.metadata.create_all(engine)
     try:
         s3.create_bucket(Bucket=S3_BUCKET)
     except ClientError as err:
@@ -49,14 +54,12 @@ def init():
 
 @app.get("/api/photos")
 def list_photos():
-    with db() as conn:
-        rows = conn.execute(
-            "SELECT id, filename, description, tags FROM photos ORDER BY id DESC"
-        ).fetchall()
+    with Session() as session:
+        photos = session.scalars(select(Photo).order_by(Photo.id.desc())).all()
     return jsonify(
         [
-            {"id": r[0], "filename": r[1], "description": r[2], "tags": r[3]}
-            for r in rows
+            {"id": photo.id, "filename": photo.filename, "description": photo.description, "tags": photo.tags}
+            for photo in photos
         ]
     )
 
@@ -78,39 +81,42 @@ def create_photo():
         ExtraArgs={"ContentType": file.mimetype or "application/octet-stream"},
     )
 
-    with db() as conn:
-        row = conn.execute(
-            "INSERT INTO photos (filename, description, tags, object_key)"
-            " VALUES (%s, %s, %s, %s) RETURNING id",
-            (file.filename, description, tags, object_key),
-        ).fetchone()
+    with Session.begin() as session:
+        photo = Photo(
+            filename=file.filename,
+            description=description,
+            tags=tags,
+            object_key=object_key,
+        )
+        session.add(photo)
+        session.flush()
+        photo_id = photo.id
 
-    return jsonify({"id": row[0], "filename": file.filename, "description": description, "tags": tags}), 201
+    return jsonify({"id": photo_id, "filename": file.filename, "description": description, "tags": tags}), 201
 
 
 @app.get("/api/photos/<int:photo_id>/image")
 def get_image(photo_id):
-    with db() as conn:
-        row = conn.execute(
-            "SELECT object_key FROM photos WHERE id = %s", (photo_id,)
-        ).fetchone()
-    if row is None:
-        return jsonify({"error": "not found"}), 404
+    with Session() as session:
+        photo = session.get(Photo, photo_id)
+        if photo is None:
+            return jsonify({"error": "not found"}), 404
+        object_key = photo.object_key
 
-    obj = s3.get_object(Bucket=S3_BUCKET, Key=row[0])
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=object_key)
     return Response(obj["Body"].read(), mimetype=obj.get("ContentType", "application/octet-stream"))
 
 
 @app.delete("/api/photos/<int:photo_id>")
 def delete_photo(photo_id):
-    with db() as conn:
-        row = conn.execute(
-            "DELETE FROM photos WHERE id = %s RETURNING object_key", (photo_id,)
-        ).fetchone()
-    if row is None:
-        return jsonify({"error": "not found"}), 404
+    with Session.begin() as session:
+        photo = session.get(Photo, photo_id)
+        if photo is None:
+            return jsonify({"error": "not found"}), 404
+        object_key = photo.object_key
+        session.delete(photo)
 
-    s3.delete_object(Bucket=S3_BUCKET, Key=row[0])
+    s3.delete_object(Bucket=S3_BUCKET, Key=object_key)
     return jsonify({"id": photo_id})
 
 

@@ -94,7 +94,7 @@ def main():
     logger.info("Polling %s for pending images every %s seconds", BACKEND_URL, POLL_INTERVAL)
     while True:
         try:
-            response = api.get(f"{BACKEND_URL}/api/images/pending", timeout=30)
+            response = api.get(f"{BACKEND_URL}/api/images/pending", params={"model": IMAGE_MODEL}, timeout=30)
             if response.status_code == 204:
                 time.sleep(POLL_INTERVAL)
                 continue

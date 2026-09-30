@@ -4,7 +4,7 @@ import os
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from io import BytesIO
 
@@ -13,8 +13,11 @@ from botocore.exceptions import ClientError
 from flask import Flask, Response, jsonify, request
 from PIL import Image as PILImage
 from sqlalchemy import CheckConstraint, DateTime, Text, Uuid, create_engine, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+import builtin_generator
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://images:images@localhost:5432/images")
 DATABASE_DRIVER = "postgresql+psycopg"
@@ -25,6 +28,9 @@ S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "rustfsadmin")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "rustfsadmin")
 S3_BUCKET = os.environ.get("S3_BUCKET", "images")
 IMAGES_TABLE = os.environ.get("IMAGES_TABLE", "images")
+GENERATORS_TABLE = os.environ.get("GENERATORS_TABLE", "generators")
+# A generator is considered offline if it has not polled for pending images within this time.
+GENERATOR_TIMEOUT = timedelta(minutes=1)
 GENERATOR_TOKEN = os.environ.get("GENERATOR_TOKEN", "")
 # States the generator may set, mapped to the states they may be set from.
 GENERATOR_STATE_TRANSITIONS = {"generating": {"pending"}, "error": {"pending", "generating"}}
@@ -65,6 +71,13 @@ class Image(Base):
     generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class Generator(Base):
+    __tablename__ = GENERATORS_TABLE
+
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 def init():
     Base.metadata.create_all(engine)
     try:
@@ -94,6 +107,26 @@ def generate_filename(description: str):
     return f"{slug}-{suffix}.png" if slug else f"{suffix}.png"
 
 
+def active_generator_model():
+    with Session() as session:
+        return session.scalars(
+            select(Generator.model)
+            .where(Generator.last_seen >= datetime.now(timezone.utc) - GENERATOR_TIMEOUT)
+            .order_by(Generator.last_seen.desc())
+            .limit(1)
+        ).first()
+
+
+def store_image(image_id: uuid.UUID, filename: str, data: bytes):
+    s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=str(image_id),
+        Body=data,
+        ContentType="image/png",
+        ContentDisposition=f'inline; filename="{filename}"',
+    )
+
+
 def require_generator_token(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
@@ -113,10 +146,25 @@ def list_images():
     return jsonify([image_to_dict(image) for image in images])
 
 
+@app.get("/api/generator")
+def get_generator():
+    return jsonify({"model": active_generator_model() or builtin_generator.MODEL})
+
+
 @app.get("/api/images/pending")
 @require_generator_token
 def get_oldest_pending_image():
-    with Session() as session:
+    model = request.args.get("model", "unknown").strip()
+    if not model or len(model) > 200:
+        return jsonify({"error": "model must be 1-200 characters"}), 400
+
+    now = datetime.now(timezone.utc)
+    with Session.begin() as session:
+        session.execute(
+            pg_insert(Generator)
+            .values(model=model, last_seen=now)
+            .on_conflict_do_update(index_elements=[Generator.model], set_={"last_seen": now})
+        )
         image = session.scalars(
             select(Image).where(Image.state == "pending").order_by(Image.requested_at, Image.id).limit(1)
         ).first()
@@ -168,6 +216,28 @@ def create_image():
 
     filename = generate_filename(description)
     requested_at = datetime.now(timezone.utc)
+
+    if active_generator_model() is None:
+        image_id = uuid.uuid4()
+        image_stream = BytesIO()
+        builtin_generator.generate(description).save(image_stream, format="PNG")
+        store_image(image_id, filename, image_stream.getvalue())
+
+        with Session.begin() as session:
+            image = Image(
+                id=image_id,
+                filename=filename,
+                description=description,
+                state="ready",
+                state_details=f"Generated with {builtin_generator.MODEL}.",
+                requested_at=requested_at,
+                generated_at=datetime.now(timezone.utc),
+            )
+            session.add(image)
+            session.flush()
+            result = image_to_dict(image)
+
+        return jsonify(result), 201
 
     with Session.begin() as session:
         image = Image(
@@ -228,13 +298,7 @@ def upload_image(image_id):
             return jsonify({"error": f"cannot upload image in state {image.state}"}), 409
         filename = image.filename
 
-    s3.put_object(
-        Bucket=S3_BUCKET,
-        Key=str(image_id),
-        Body=data,
-        ContentType="image/png",
-        ContentDisposition=f'inline; filename="{filename}"',
-    )
+    store_image(image_id, filename, data)
 
     with Session.begin() as session:
         image = session.get(Image, image_id, with_for_update=True)

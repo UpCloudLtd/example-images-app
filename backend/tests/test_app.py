@@ -1,15 +1,20 @@
+import colorsys
 import unittest
 import uuid
+from collections import Counter
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 from botocore.exceptions import ClientError
 from PIL import Image as PILImage
-from sqlalchemy import text
+from sqlalchemy import text, update
 
 import app as api
+import builtin_generator
 
 AUTH = {"Authorization": "Bearer test-token"}
 SUFFIX = "[bcdfghjklmnpqrstvwxz2456789]{5}"
+TEST_MODEL = "test/model"
 
 
 def png_bytes():
@@ -43,12 +48,45 @@ class GenerateFilenameTest(unittest.TestCase):
                 self.assertRegex(api.generate_filename(description), f"^{pattern}$")
 
 
+class BuiltinGeneratorTest(unittest.TestCase):
+    def test_generates_image_with_expected_size(self):
+        for description in ["Riva del Garda", "", "word " * 500, "a" * 300]:
+            with self.subTest(length=len(description)):
+                image = builtin_generator.generate(description, seed=1)
+                self.assertEqual(image.size, builtin_generator.SIZE)
+                self.assertEqual(image.mode, "RGB")
+
+    def test_same_seed_generates_same_image(self):
+        first = builtin_generator.generate("Riva del Garda", seed=42)
+        second = builtin_generator.generate("Riva del Garda", seed=42)
+        other = builtin_generator.generate("Riva del Garda", seed=43)
+
+        self.assertEqual(first.tobytes(), second.tobytes())
+        self.assertNotEqual(first.tobytes(), other.tobytes())
+
+    def test_renders_text_in_bright_random_hue(self):
+        def text_color(seed):
+            for color, count in Counter(builtin_generator.generate("Riva del Garda", seed=seed).getdata()).most_common():
+                hue, lightness, saturation = colorsys.rgb_to_hls(*(channel / 255 for channel in color))
+                # Background colors are desaturated, so only the text fill matches.
+                if abs(lightness - builtin_generator.TEXT_LIGHTNESS) < 0.01 and saturation > 0.95:
+                    self.assertGreater(count, 1000)
+                    return color
+            self.fail("text color not found")
+
+        self.assertEqual(len({text_color(seed) for seed in range(5)}), 5)
+
+
 class ImagesApiTest(unittest.TestCase):
     def setUp(self):
         with api.engine.begin() as connection:
-            connection.execute(text(f"TRUNCATE {api.IMAGES_TABLE}"))
+            connection.execute(text(f"TRUNCATE {api.IMAGES_TABLE}, {api.GENERATORS_TABLE}"))
         empty_bucket()
         self.client = api.app.test_client()
+        self.poll_pending()
+
+    def poll_pending(self, model=TEST_MODEL):
+        return self.client.get("/api/images/pending", query_string={"model": model}, headers=AUTH)
 
     def create_image(self, description="Riva del Garda"):
         response = self.client.post("/api/images", json={"description": description})
@@ -104,6 +142,43 @@ class ImagesApiTest(unittest.TestCase):
 
         self.claim(first["id"])
         self.assertEqual(self.client.get("/api/images/pending", headers=AUTH).get_json()["id"], second["id"])
+
+    def test_generator_reports_most_recently_polled_model(self):
+        self.assertEqual(self.client.get("/api/generator").get_json(), {"model": TEST_MODEL})
+
+        self.assertEqual(self.poll_pending("other/model").status_code, 204)
+        self.assertEqual(self.client.get("/api/generator").get_json(), {"model": "other/model"})
+
+    def test_pending_rejects_invalid_model(self):
+        for model in ["", " ", "x" * 201]:
+            with self.subTest(length=len(model)):
+                self.assertEqual(self.poll_pending(model).status_code, 400)
+
+    def test_generator_is_offline_after_timeout(self):
+        with api.Session.begin() as session:
+            session.execute(
+                update(api.Generator).values(last_seen=datetime.now(timezone.utc) - timedelta(seconds=61))
+            )
+
+        self.assertEqual(self.client.get("/api/generator").get_json(), {"model": builtin_generator.MODEL})
+
+    def test_create_image_uses_builtin_generator_when_offline(self):
+        with api.engine.begin() as connection:
+            connection.execute(text(f"TRUNCATE {api.GENERATORS_TABLE}"))
+
+        response = self.client.post("/api/images", json={"description": "Riva del Garda"})
+        self.assertEqual(response.status_code, 201)
+        image = response.get_json()
+        self.assertEqual(image["state"], "ready")
+        self.assertEqual(image["state_details"], f"Generated with {builtin_generator.MODEL}.")
+        self.assertIsNotNone(image["generated_at"])
+        self.assertEqual(self.client.get("/api/images/pending", headers=AUTH).status_code, 204)
+
+        served = self.client.get(f"/api/images/{image['id']}/image")
+        self.assertEqual(served.status_code, 200)
+        self.assertEqual(served.headers["Content-Disposition"], f'inline; filename="{image["filename"]}"')
+        with PILImage.open(BytesIO(served.data)) as png:
+            self.assertEqual((png.format, png.size), ("PNG", builtin_generator.SIZE))
 
     def test_state_transitions(self):
         image = self.create_image()

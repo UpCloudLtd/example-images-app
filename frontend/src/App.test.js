@@ -38,8 +38,14 @@ function response(body, status = 200) {
 
 let fetchMock;
 
+function imageRequests() {
+  return fetchMock.mock.calls.filter(([url, options]) => url === '/api/images' && !options);
+}
+
 beforeEach(() => {
-  fetchMock = vi.fn(() => response(images));
+  fetchMock = vi.fn((url) =>
+    url === '/api/generator' ? response({ model: 'builtin/text-on-shapes' }) : response(images)
+  );
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -57,7 +63,13 @@ describe('App', () => {
     expect(screen.getByText('Generating with FLUX.2.')).toBeTruthy();
     expect(screen.getByText('Error')).toBeTruthy();
     expect(screen.getByText('RuntimeError: out of memory')).toBeTruthy();
-    expect(screen.getAllByText('Not generated')).toHaveLength(2);
+    expect(screen.getAllByText('N/A')).toHaveLength(2);
+  });
+
+  it('shows the active generator model', async () => {
+    render(App);
+
+    expect((await screen.findByText('builtin/text-on-shapes')).tagName).toBe('CODE');
   });
 
   it('shows a link to open only ready images in a new tab', async () => {
@@ -78,8 +90,8 @@ describe('App', () => {
     await fireEvent.input(input, { target: { value: 'Riva del Garda' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/images', {
+    await waitFor(() => expect(imageRequests()).toHaveLength(2));
+    expect(fetchMock).toHaveBeenCalledWith('/api/images', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: 'Riva del Garda' })
@@ -103,8 +115,8 @@ describe('App', () => {
 
     await fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/images/4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90', {
+    await waitFor(() => expect(imageRequests()).toHaveLength(2));
+    expect(fetchMock).toHaveBeenCalledWith('/api/images/4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90', {
       method: 'DELETE'
     });
   });

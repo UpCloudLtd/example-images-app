@@ -3,12 +3,17 @@
   import ImageCard from "./ImageCard.svelte";
 
   let images = [];
+  let generatorModel = "";
   let description = "";
   let generating = false;
   let error = "";
 
   async function load() {
     images = await (await fetch("/api/images")).json();
+  }
+
+  async function loadGenerator() {
+    generatorModel = (await (await fetch("/api/generator")).json()).model;
   }
 
   async function generate(event) {
@@ -25,14 +30,14 @@
       });
       const result = await response.json();
       if (!response.ok) {
-        error = result.error || "Image generation failed";
+        error = result.error || "unknown error happened";
         return;
       }
 
       description = "";
       await load();
     } catch {
-      error = "Could not connect to the image generation service";
+      error = "could not connect to the image generation service";
     } finally {
       generating = false;
     }
@@ -49,7 +54,11 @@
 
   onMount(() => {
     load();
-    const poll = setInterval(load, 15000);
+    loadGenerator();
+    const poll = setInterval(() => {
+      load();
+      loadGenerator();
+    }, 15000);
     return () => clearInterval(poll);
   });
 </script>
@@ -60,8 +69,9 @@
   </h1>
   <p class="intro">
     This is an example application used to demonstrate how to deploy an
-    application using various different managed cloud services. The images are
-    stored in an object storage and metadata is tracked in a database.
+    application using various different managed cloud services. Use the form
+    below to generate images. The images are stored in an object storage and
+    metadata is tracked in a database.
   </p>
 
   <form on:submit={generate}>
@@ -69,7 +79,12 @@
     <input id="description" type="text" bind:value={description} />
     <button type="submit" disabled={generating}>Generate</button>
   </form>
-  {#if error}<p role="alert">{error}</p>{/if}
+  {#if error}<p class="helptext" role="alert">
+      Generating image failed because <code class="error">{error}</code>
+    </p>
+  {:else if generatorModel}
+    <p class="helptext">Generating images with <code>{generatorModel}</code></p>
+  {/if}
 
   <ul>
     {#each images as image (image.id)}
@@ -173,7 +188,17 @@
     list-style: none;
     padding: 0;
   }
-  [role="alert"] {
+  .helptext {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  .helptext code {
+    color: var(--theme-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .helptext code.error {
     color: var(--danger-text);
   }
 </style>

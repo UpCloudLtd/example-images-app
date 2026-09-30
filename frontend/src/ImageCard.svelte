@@ -1,55 +1,83 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher } from "svelte";
 
   export let image;
 
   const dispatch = createEventDispatcher();
 
   function formatDate(value) {
-    return value ? new Date(value).toLocaleString() : 'Not generated';
+    return new Date(value).toISOString().replace(/\.\d{3}Z$/, "Z");
   }
 </script>
 
 <li>
-  {#if image.state === 'ready'}
+  {#if image.state === "ready"}
     <img src="/api/images/{image.id}/image" alt={image.description} />
-  {:else if image.state === 'error'}
+  {:else if image.state === "error"}
     <div class="status failed">
       <strong>Error</strong>
       <span>{image.state_details}</span>
     </div>
   {:else}
     <div class="status pending">
-      <strong>{image.state === 'generating' ? 'Generating' : 'Pending'}</strong>
+      <strong>{image.state === "generating" ? "Generating" : "Pending"}</strong>
       <span>{image.state_details}</span>
     </div>
   {/if}
-  <strong>{image.filename}</strong>
+  <code class="filename">{image.filename}</code>
   <p>{image.description}</p>
-  <small>Requested: {formatDate(image.requested_at)}</small>
-  <small>Generated: {formatDate(image.generated_at)}</small>
+  <dl class="timestamps">
+    <dt>Requested:</dt>
+    <dd>
+      <time datetime={formatDate(image.requested_at)}
+        >{formatDate(image.requested_at)}</time
+      >
+    </dd>
+    <dt>Generated:</dt>
+    <dd>
+      {#if image.generated_at}
+        <time datetime={formatDate(image.generated_at)}
+          >{formatDate(image.generated_at)}</time
+        >
+      {:else}
+        N/A
+      {/if}
+    </dd>
+  </dl>
   <div class="actions">
-    {#if image.state === 'ready'}
-      <a class="show" href="/api/images/{image.id}/image" target="_blank" rel="noopener noreferrer">Show</a>
+    {#if image.state === "ready"}
+      <a
+        class="show"
+        href="/api/images/{image.id}/image"
+        target="_blank"
+        rel="noopener noreferrer">Show</a
+      >
     {/if}
-    <button type="button" class="delete" on:click={() => dispatch('delete', image.id)}>Delete</button>
+    <button
+      type="button"
+      class="delete"
+      on:click={() => dispatch("delete", image.id)}>Delete</button
+    >
   </div>
 </li>
 
 <style>
   li {
+    --card-padding: 0.666rem;
     display: flex;
     flex-direction: column;
-    padding: 0.75rem;
+    padding: var(--card-padding);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
     background: var(--surface);
+    overflow: hidden;
   }
   img,
   .status {
-    width: 100%;
+    /* Bleed over the card padding so the image reaches the card edges. */
+    width: calc(100% + 2 * var(--card-padding));
+    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 0.25rem;
     aspect-ratio: 1;
-    border-radius: 0.25rem;
   }
   img {
     object-fit: cover;
@@ -77,9 +105,28 @@
   .status span {
     overflow-wrap: anywhere;
   }
-  small {
-    display: block;
+  .filename {
+    color: var(--theme-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.666rem;
+    overflow-wrap: anywhere;
+    margin: 0.333em 0;
+    overflow-wrap: anywhere;
+  }
+  .timestamps {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 0.125rem 0.5rem;
+    margin: 0;
+    font-size: 0.666rem;
     color: var(--muted);
+  }
+  .timestamps dd {
+    margin: 0;
+  }
+  time {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   .actions {
     display: flex;
@@ -89,7 +136,7 @@
   }
   .show,
   .delete {
-    padding: .25rem .5rem .20rem;
+    padding: 0.25rem 0.5rem 0.2rem;
     border: none;
     border-radius: 0.25rem;
     background: none;

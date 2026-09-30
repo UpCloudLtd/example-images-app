@@ -21,6 +21,23 @@ describe('ImageCard', () => {
     expect(screen.queryByRole('link', { name: 'Show' })).toBeNull();
   });
 
+  it('lists timestamps in ISO 8601 UTC format', () => {
+    render(ImageCard, {
+      image: {
+        ...image,
+        state: 'ready',
+        requested_at: '2026-09-30T13:00:00+03:00',
+        generated_at: '2026-09-30T10:01:30.250000+00:00'
+      }
+    });
+
+    const requested = screen.getByText('2026-09-30T10:00:00Z');
+    expect(requested.tagName).toBe('TIME');
+    expect(requested.getAttribute('datetime')).toBe('2026-09-30T10:00:00Z');
+    expect(screen.getByText('2026-09-30T10:01:30Z')).toBeTruthy();
+    expect(screen.getByText('Requested:').tagName).toBe('DT');
+  });
+
   it('dispatches delete with the image id', async () => {
     const onDelete = vi.fn();
     const { component } = render(ImageCard, { image });

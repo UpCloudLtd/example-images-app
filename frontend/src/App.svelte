@@ -1,14 +1,14 @@
 <script>
-  import { onMount } from 'svelte';
-  import ImageCard from './ImageCard.svelte';
+  import { onMount } from "svelte";
+  import ImageCard from "./ImageCard.svelte";
 
   let images = [];
-  let description = '';
+  let description = "";
   let generating = false;
-  let error = '';
+  let error = "";
 
   async function load() {
-    images = await (await fetch('/api/images')).json();
+    images = await (await fetch("/api/images")).json();
   }
 
   async function generate(event) {
@@ -16,32 +16,32 @@
     if (generating) return;
 
     generating = true;
-    error = '';
+    error = "";
     try {
-      const response = await fetch('/api/images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description })
+      const response = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
       });
       const result = await response.json();
       if (!response.ok) {
-        error = result.error || 'Image generation failed';
+        error = result.error || "Image generation failed";
         return;
       }
 
-      description = '';
+      description = "";
       await load();
     } catch {
-      error = 'Could not connect to the image generation service';
+      error = "Could not connect to the image generation service";
     } finally {
       generating = false;
     }
   }
 
   async function remove(id) {
-    const response = await fetch(`/api/images/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/images/${id}`, { method: "DELETE" });
     if (!response.ok) {
-      alert('Delete failed');
+      alert("Delete failed");
       return;
     }
     await load();
@@ -55,16 +55,19 @@
 </script>
 
 <main>
-  <h1><img class="logo" src="/logo.svg" alt="" width="48" height="48" />Images</h1>
+  <h1>
+    <img class="logo" src="/logo.svg" alt="" width="48" height="48" />Images
+  </h1>
   <p class="intro">
-    This is an example application used to demonstrate how to deploy an application using various different managed cloud services.
-    The images are stored in an object storage and metadata is tracked in a database.
+    This is an example application used to demonstrate how to deploy an
+    application using various different managed cloud services. The images are
+    stored in an object storage and metadata is tracked in a database.
   </p>
 
   <form on:submit={generate}>
     <label for="description">Description</label>
     <input id="description" type="text" bind:value={description} />
-    <button type="submit" disabled={generating}>{generating ? 'Generating...' : 'Generate image'}</button>
+    <button type="submit" disabled={generating}>Generate</button>
   </form>
   {#if error}<p role="alert">{error}</p>{/if}
 
@@ -122,13 +125,15 @@
   }
   form {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.25rem 0.5rem;
     flex-wrap: wrap;
     margin-bottom: 1rem;
   }
   label {
     flex-basis: 100%;
     color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
   }
   input {
     flex: 1;
@@ -150,6 +155,7 @@
     border-radius: 0.25rem;
     background: var(--theme);
     color: #fff;
+    font-weight: 600;
     cursor: pointer;
   }
   button:hover:not(:disabled) {
@@ -163,10 +169,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
     gap: 1rem;
+    margin: 3.5rem 0 0;
     list-style: none;
     padding: 0;
   }
-  [role='alert'] {
+  [role="alert"] {
     color: var(--danger-text);
   }
 </style>

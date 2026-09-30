@@ -57,7 +57,7 @@ describe('App', () => {
     expect(screen.getByText('Generating with FLUX.2.')).toBeTruthy();
     expect(screen.getByText('Error')).toBeTruthy();
     expect(screen.getByText('RuntimeError: out of memory')).toBeTruthy();
-    expect(screen.getAllByText('Generated: Not generated')).toHaveLength(2);
+    expect(screen.getAllByText('Not generated')).toHaveLength(2);
   });
 
   it('shows a link to open only ready images in a new tab', async () => {
@@ -76,7 +76,7 @@ describe('App', () => {
 
     const input = screen.getByLabelText('Description');
     await fireEvent.input(input, { target: { value: 'Riva del Garda' } });
-    await fireEvent.click(screen.getByRole('button', { name: 'Generate image' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/images', {
@@ -92,7 +92,7 @@ describe('App', () => {
     await screen.findByAltText('Riva del Garda');
     fetchMock.mockImplementationOnce(() => response({ error: 'description is required' }, 400));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Generate image' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
     expect((await screen.findByRole('alert')).textContent).toBe('description is required');
   });

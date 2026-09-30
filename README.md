@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo.svg" alt="Images example application logo" width="96" height="96" />
+</p>
+
 # Images example application
 
 Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) or a built-in generator when the AI generator is not available.

@@ -106,7 +106,9 @@ describe('App', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Generate' }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('description is required');
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent.replace(/\s+/g, ' ').trim()).toBe('Generating image failed because description is required');
+    expect(alert.querySelector('code').textContent).toBe('description is required');
   });
 
   it('deletes an image and reloads images', async () => {

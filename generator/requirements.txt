@@ -1,0 +1,5 @@
+torch>=2.4.0
+transformers>=5.17
+diffusers==0.40.0
+accelerate
+requests>=2.32

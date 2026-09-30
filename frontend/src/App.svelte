@@ -1,34 +1,48 @@
 <script>
-  let photos = [];
-  let files;
-  let description = '';
-  let tags = '';
+  import { onMount } from 'svelte';
 
-  async function load() {
-    photos = await (await fetch('/api/photos')).json();
+  let images = [];
+  let description = '';
+  let generating = false;
+  let error = '';
+
+  function formatDate(value) {
+    return value ? new Date(value).toLocaleString() : 'Not generated';
   }
 
-  async function upload(event) {
+  async function load() {
+    images = await (await fetch('/api/images')).json();
+  }
+
+  async function generate(event) {
     event.preventDefault();
-    const body = new FormData();
-    body.append('file', files[0]);
-    body.append('description', description);
-    body.append('tags', tags);
+    if (generating) return;
 
-    const response = await fetch('/api/photos', { method: 'POST', body });
-    if (!response.ok) {
-      alert('Upload failed');
-      return;
+    generating = true;
+    error = '';
+    try {
+      const response = await fetch('/api/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        error = result.error || 'Image generation failed';
+        return;
+      }
+
+      description = '';
+      await load();
+    } catch {
+      error = 'Could not connect to the image generation service';
+    } finally {
+      generating = false;
     }
-
-    description = '';
-    tags = '';
-    event.target.reset();
-    await load();
   }
 
   async function remove(id) {
-    const response = await fetch(`/api/photos/${id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/images/${id}`, { method: 'DELETE' });
     if (!response.ok) {
       alert('Delete failed');
       return;
@@ -36,27 +50,43 @@
     await load();
   }
 
-  load();
+  onMount(() => {
+    load();
+    const poll = setInterval(load, 15000);
+    return () => clearInterval(poll);
+  });
 </script>
 
 <main>
-  <h1>Photos</h1>
+  <h1>Images</h1>
 
-  <form on:submit={upload}>
-    <input type="file" accept="image/*" bind:files required />
+  <form on:submit={generate}>
     <input type="text" placeholder="Description" bind:value={description} />
-    <input type="text" placeholder="Tags (comma separated)" bind:value={tags} />
-    <button type="submit">Upload</button>
+    <button type="submit" disabled={generating}>{generating ? 'Generating...' : 'Generate image'}</button>
   </form>
+  {#if error}<p role="alert">{error}</p>{/if}
 
   <ul>
-    {#each photos as photo (photo.id)}
+    {#each images as image (image.id)}
       <li>
-        <img src="/api/photos/{photo.id}/image" alt={photo.description} />
-        <strong>{photo.filename}</strong>
-        <p>{photo.description}</p>
-        <small>{photo.tags.join(', ')}</small>
-        <button type="button" on:click={() => remove(photo.id)}>Delete</button>
+        {#if image.state === 'ready'}
+          <img src="/api/images/{image.id}/image" alt={image.description} />
+        {:else if image.state === 'error'}
+          <div class="status failed">
+            <strong>Error</strong>
+            <span>{image.state_details}</span>
+          </div>
+        {:else}
+          <div class="status pending">
+            <strong>{image.state === 'generating' ? 'Generating' : 'Pending'}</strong>
+            <span>{image.state_details}</span>
+          </div>
+        {/if}
+        <strong>{image.filename}</strong>
+        <p>{image.description}</p>
+        <small>Requested: {formatDate(image.requested_at)}</small>
+        <small>Generated: {formatDate(image.generated_at)}</small>
+        <button type="button" on:click={() => remove(image.id)}>Delete</button>
       </li>
     {/each}
   </ul>
@@ -82,10 +112,36 @@
     list-style: none;
     padding: 0;
   }
-  img {
+  img,
+  .status {
     width: 100%;
     aspect-ratio: 1;
-    object-fit: cover;
     border-radius: 0.25rem;
+  }
+  img {
+    object-fit: cover;
+  }
+  .status {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.5rem;
+    box-sizing: border-box;
+    padding: 1rem;
+    text-align: center;
+  }
+  .pending {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  .failed {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .status span {
+    overflow-wrap: anywhere;
+  }
+  small {
+    display: block;
   }
 </style>

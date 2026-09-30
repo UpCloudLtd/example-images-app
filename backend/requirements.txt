@@ -1,4 +1,6 @@
 flask==3.0.3
+gunicorn==23.0.0
 SQLAlchemy==2.1.1
-psycopg[binary]==3.2.1
+psycopg[binary]==3.3.6
 boto3==1.34.162
+Pillow==12.3.0

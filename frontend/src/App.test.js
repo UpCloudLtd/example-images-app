@@ -4,7 +4,7 @@ import App from './App.svelte';
 
 const images = [
   {
-    id: 3,
+    id: '4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90',
     filename: 'riva-del-garda-8lfgq.png',
     description: 'Riva del Garda',
     state: 'ready',
@@ -13,7 +13,7 @@ const images = [
     generated_at: '2026-09-30T10:01:00+00:00'
   },
   {
-    id: 2,
+    id: '0c2e4a6b-8d1f-4b3c-9e5a-7f6d8c0b2a14',
     filename: 'donkey-5nf8k.png',
     description: 'Donkey',
     state: 'generating',
@@ -22,7 +22,7 @@ const images = [
     generated_at: null
   },
   {
-    id: 1,
+    id: '9a7b5c3d-1e2f-4a6b-8c0d-e4f6a8b0c2d3',
     filename: 'cat-g9zlw.png',
     description: 'Cat',
     state: 'error',
@@ -52,7 +52,7 @@ describe('App', () => {
     render(App);
 
     const image = await screen.findByAltText('Riva del Garda');
-    expect(image.getAttribute('src')).toBe('/api/images/3/image');
+    expect(image.getAttribute('src')).toBe('/api/images/4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90/image');
     expect(screen.getByText('Generating')).toBeTruthy();
     expect(screen.getByText('Generating with FLUX.2.')).toBeTruthy();
     expect(screen.getByText('Error')).toBeTruthy();
@@ -94,6 +94,8 @@ describe('App', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/images/3', { method: 'DELETE' });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/images/4f8d6a2e-9c1b-4e7a-8d3f-2b5c6e7f8a90', {
+      method: 'DELETE'
+    });
   });
 });

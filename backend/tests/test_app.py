@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from io import BytesIO
 
 from botocore.exceptions import ClientError
@@ -45,7 +46,7 @@ class GenerateFilenameTest(unittest.TestCase):
 class ImagesApiTest(unittest.TestCase):
     def setUp(self):
         with api.engine.begin() as connection:
-            connection.execute(text(f"TRUNCATE {api.IMAGES_TABLE} RESTART IDENTITY"))
+            connection.execute(text(f"TRUNCATE {api.IMAGES_TABLE}"))
         empty_bucket()
         self.client = api.app.test_client()
 
@@ -69,13 +70,10 @@ class ImagesApiTest(unittest.TestCase):
             content_type="multipart/form-data",
         )
 
-    def object_key(self, image_id):
-        with api.Session() as session:
-            return session.get(api.Image, image_id).object_key
-
     def test_create_image_queues_pending_image(self):
         image = self.create_image()
 
+        self.assertEqual(str(uuid.UUID(image["id"])), image["id"])
         self.assertEqual(image["state"], "pending")
         self.assertIsNone(image["generated_at"])
         self.assertEqual([item["id"] for item in self.client.get("/api/images").get_json()], [image["id"]])
@@ -86,7 +84,12 @@ class ImagesApiTest(unittest.TestCase):
                 self.assertEqual(self.client.post("/api/images", json=payload).status_code, 400)
 
     def test_generator_endpoints_require_token(self):
-        endpoints = [("get", "/api/images/pending"), ("patch", "/api/images/1"), ("put", "/api/images/1/image")]
+        image_id = uuid.uuid4()
+        endpoints = [
+            ("get", "/api/images/pending"),
+            ("patch", f"/api/images/{image_id}"),
+            ("put", f"/api/images/{image_id}/image"),
+        ]
         for method, path in endpoints:
             for headers in [{}, {"Authorization": "Bearer wrong-token"}]:
                 with self.subTest(method=method, path=path, headers=headers):
@@ -120,7 +123,8 @@ class ImagesApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["state"], "error")
 
-        self.assertEqual(self.claim(999999).status_code, 404)
+        self.assertEqual(self.claim(uuid.uuid4()).status_code, 404)
+        self.assertEqual(self.claim("not-a-uuid").status_code, 404)
 
     def test_upload_requires_generating_state(self):
         image = self.create_image()
@@ -146,7 +150,7 @@ class ImagesApiTest(unittest.TestCase):
         self.assertIsNotNone(response.get_json()["generated_at"])
 
         disposition = f'inline; filename="{image["filename"]}"'
-        stored = api.s3.head_object(Bucket=api.S3_BUCKET, Key=self.object_key(image["id"]))
+        stored = api.s3.head_object(Bucket=api.S3_BUCKET, Key=image["id"])
         self.assertEqual(stored["ContentType"], "image/png")
         self.assertEqual(stored["ContentDisposition"], disposition)
 
@@ -160,12 +164,11 @@ class ImagesApiTest(unittest.TestCase):
         image = self.create_image()
         self.claim(image["id"])
         self.upload(image["id"])
-        key = self.object_key(image["id"])
 
         self.assertEqual(self.client.delete(f"/api/images/{image['id']}").status_code, 200)
         self.assertEqual(self.client.get("/api/images").get_json(), [])
         with self.assertRaises(ClientError):
-            api.s3.head_object(Bucket=api.S3_BUCKET, Key=key)
+            api.s3.head_object(Bucket=api.S3_BUCKET, Key=image["id"])
 
 
 if __name__ == "__main__":

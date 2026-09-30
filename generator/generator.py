@@ -46,7 +46,7 @@ def get_pipeline():
     return image_pipeline
 
 
-def set_state(image_id: int, state: str, state_details: str):
+def set_state(image_id: str, state: str, state_details: str):
     return api.patch(
         f"{BACKEND_URL}/api/images/{image_id}",
         json={"state": state, "state_details": state_details},

@@ -12,7 +12,7 @@ import boto3
 from botocore.exceptions import ClientError
 from flask import Flask, Response, jsonify, request
 from PIL import Image as PILImage
-from sqlalchemy import CheckConstraint, DateTime, Text, create_engine, select, text
+from sqlalchemy import CheckConstraint, DateTime, Text, Uuid, create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -55,10 +55,10 @@ class Image(Base):
         CheckConstraint("state IN ('pending', 'generating', 'ready', 'error')", name=f"{IMAGES_TABLE}_state_check"),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    # Also used as the object storage key.
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     filename: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default=text("''"))
-    object_key: Mapped[str] = mapped_column(Text, nullable=False)
     state: Mapped[str] = mapped_column(Text, nullable=False, default="pending", server_default=text("'pending'"))
     state_details: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default=text("''"))
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -76,7 +76,7 @@ def init():
 
 def image_to_dict(image: Image):
     return {
-        "id": image.id,
+        "id": str(image.id),
         "filename": image.filename,
         "description": image.description,
         "state": image.state,
@@ -109,7 +109,7 @@ def require_generator_token(view):
 @app.get("/api/images")
 def list_images():
     with Session() as session:
-        images = session.scalars(select(Image).order_by(Image.id.desc())).all()
+        images = session.scalars(select(Image).order_by(Image.requested_at.desc(), Image.id)).all()
     return jsonify([image_to_dict(image) for image in images])
 
 
@@ -125,7 +125,7 @@ def get_oldest_pending_image():
         return jsonify(image_to_dict(image))
 
 
-@app.patch("/api/images/<int:image_id>")
+@app.patch("/api/images/<uuid:image_id>")
 @require_generator_token
 def update_image_state(image_id):
     payload = request.get_json(silent=True)
@@ -166,7 +166,6 @@ def create_image():
     if not description:
         return jsonify({"error": "description is required"}), 400
 
-    object_key = str(uuid.uuid4())
     filename = generate_filename(description)
     requested_at = datetime.now(timezone.utc)
 
@@ -174,7 +173,6 @@ def create_image():
         image = Image(
             filename=filename,
             description=description,
-            object_key=object_key,
             state="pending",
             state_details="Queued for generation.",
             requested_at=requested_at,
@@ -186,7 +184,7 @@ def create_image():
     return jsonify(result), 202
 
 
-@app.get("/api/images/<int:image_id>/image")
+@app.get("/api/images/<uuid:image_id>/image")
 def get_image(image_id):
     with Session() as session:
         image = session.get(Image, image_id)
@@ -194,9 +192,8 @@ def get_image(image_id):
             return jsonify({"error": "not found"}), 404
         if image.state != "ready":
             return jsonify({"error": "image is not ready", "state_details": image.state_details}), 409
-        object_key = image.object_key
 
-    obj = s3.get_object(Bucket=S3_BUCKET, Key=object_key)
+    obj = s3.get_object(Bucket=S3_BUCKET, Key=str(image_id))
     headers = {"Content-Disposition": obj["ContentDisposition"]} if obj.get("ContentDisposition") else None
     return Response(
         obj["Body"].read(),
@@ -205,7 +202,7 @@ def get_image(image_id):
     )
 
 
-@app.put("/api/images/<int:image_id>/image")
+@app.put("/api/images/<uuid:image_id>/image")
 @require_generator_token
 def upload_image(image_id):
     upload = request.files.get("image")
@@ -229,12 +226,11 @@ def upload_image(image_id):
             return jsonify({"error": "not found"}), 404
         if image.state != "generating":
             return jsonify({"error": f"cannot upload image in state {image.state}"}), 409
-        object_key = image.object_key
         filename = image.filename
 
     s3.put_object(
         Bucket=S3_BUCKET,
-        Key=object_key,
+        Key=str(image_id),
         Body=data,
         ContentType="image/png",
         ContentDisposition=f'inline; filename="{filename}"',
@@ -243,7 +239,7 @@ def upload_image(image_id):
     with Session.begin() as session:
         image = session.get(Image, image_id, with_for_update=True)
         if image is None:
-            s3.delete_object(Bucket=S3_BUCKET, Key=object_key)
+            s3.delete_object(Bucket=S3_BUCKET, Key=str(image_id))
             return jsonify({"error": "not found"}), 404
         if image.state != "generating":
             return jsonify({"error": f"cannot upload image in state {image.state}"}), 409
@@ -255,17 +251,16 @@ def upload_image(image_id):
     return jsonify(result)
 
 
-@app.delete("/api/images/<int:image_id>")
+@app.delete("/api/images/<uuid:image_id>")
 def delete_image(image_id):
     with Session.begin() as session:
         image = session.get(Image, image_id)
         if image is None:
             return jsonify({"error": "not found"}), 404
-        object_key = image.object_key
         session.delete(image)
 
-    s3.delete_object(Bucket=S3_BUCKET, Key=object_key)
-    return jsonify({"id": image_id})
+    s3.delete_object(Bucket=S3_BUCKET, Key=str(image_id))
+    return jsonify({"id": str(image_id)})
 
 
 init()

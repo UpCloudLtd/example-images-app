@@ -58,10 +58,15 @@
 </script>
 
 <main>
-  <h1>Images</h1>
+  <h1><img class="logo" src="/logo.svg" alt="" width="48" height="48" />Images</h1>
+  <p class="intro">
+    This is an example application used to demonstrate how to deploy an application using various different managed cloud services.
+    The images are stored in an object storage and metadata is tracked in a database.
+  </p>
 
   <form on:submit={generate}>
-    <input type="text" placeholder="Description" bind:value={description} />
+    <label for="description">Description</label>
+    <input id="description" type="text" bind:value={description} />
     <button type="submit" disabled={generating}>{generating ? 'Generating...' : 'Generate image'}</button>
   </form>
   {#if error}<p role="alert">{error}</p>{/if}
@@ -93,11 +98,48 @@
 </main>
 
 <style>
+  :global(:root) {
+    color-scheme: dark;
+    --theme: #7b00ff;
+    --theme-hover: #8f24ff;
+    /* Lighter tint for text: the theme color itself is too dark to read on the background. */
+    --theme-text: #b98aff;
+    --background: #0f0d14;
+    --surface: #1a1722;
+    --border: #2e2939;
+    --text: #ece9f2;
+    --muted: #a39db0;
+    --danger-text: #fca5b5;
+  }
+  :global(body) {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+  }
   main {
     font-family: sans-serif;
     max-width: 60rem;
     margin: 0 auto;
     padding: 1rem;
+  }
+  h1 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-weight: 300;
+    color: var(--theme-text);
+  }
+  h1 .logo {
+    width: 3rem;
+    height: 3rem;
+    aspect-ratio: auto;
+  }
+  .intro {
+    max-width: 36rem;
+    margin: 0 auto 2rem;
+    color: var(--muted);
   }
   form {
     display: flex;
@@ -105,12 +147,59 @@
     flex-wrap: wrap;
     margin-bottom: 1rem;
   }
+  label {
+    flex-basis: 100%;
+    color: var(--muted);
+  }
+  input {
+    flex: 1;
+    min-width: 12rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background: var(--surface);
+    color: var(--text);
+  }
+  input:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--theme-text);
+    outline-offset: 2px;
+  }
+  button {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--theme);
+    border-radius: 0.25rem;
+    background: var(--theme);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) {
+    background: var(--theme-hover);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  li button {
+    background: transparent;
+    color: var(--theme-text);
+  }
+  li button:hover:not(:disabled) {
+    background: var(--theme);
+    color: #fff;
+  }
   ul {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
     gap: 1rem;
     list-style: none;
     padding: 0;
+  }
+  li {
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
   }
   img,
   .status {
@@ -131,17 +220,24 @@
     text-align: center;
   }
   .pending {
-    background: #e5e7eb;
-    color: #374151;
+    background: #241c33;
+    color: var(--muted);
+  }
+  .pending strong {
+    color: var(--theme-text);
   }
   .failed {
-    background: #fee2e2;
-    color: #991b1b;
+    background: #3a1620;
+    color: var(--danger-text);
+  }
+  [role='alert'] {
+    color: var(--danger-text);
   }
   .status span {
     overflow-wrap: anywhere;
   }
   small {
     display: block;
+    color: var(--muted);
   }
 </style>

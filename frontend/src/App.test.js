@@ -64,7 +64,7 @@ describe('App', () => {
     render(App);
     await screen.findByAltText('Riva del Garda');
 
-    const input = screen.getByPlaceholderText('Description');
+    const input = screen.getByLabelText('Description');
     await fireEvent.input(input, { target: { value: 'Riva del Garda' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Generate image' }));
 

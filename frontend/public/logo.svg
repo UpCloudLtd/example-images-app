@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <clipPath id="left">
+      <path d="M26 8H10a8 8 0 0 0-8 8v26a8 8 0 0 0 8 8h14l4-9-6-8 6-8-6-8z" />
+    </clipPath>
+    <clipPath id="right">
+      <path d="M26 8h16a8 8 0 0 1 8 8v26a8 8 0 0 1-8 8H24l4-9-6-8 6-8-6-8z" />
+    </clipPath>
+    <g id="picture">
+      <rect x="2" y="8" width="48" height="42" fill="#f5f1ff" />
+      <circle cx="13" cy="20" r="4.5" fill="#7b00ff" />
+      <path d="M20 50 35 30l15 14v6z" fill="#b98aff" stroke="#b98aff" stroke-width="2" stroke-linejoin="round" />
+      <path d="M2 50v-8l13-12 13 20z" fill="#7b00ff" stroke="#7b00ff" stroke-width="2" stroke-linejoin="round" />
+    </g>
+  </defs>
+  <g clip-path="url(#left)"><use href="#picture" /></g>
+  <path d="M26 8H10a8 8 0 0 0-8 8v26a8 8 0 0 0 8 8h14l4-9-6-8 6-8-6-8z" fill="none" stroke="#8a8398" stroke-width="3" stroke-linejoin="round" />
+  <g transform="translate(10 4) rotate(5 38 29)">
+    <g clip-path="url(#right)"><use href="#picture" /></g>
+    <path d="M26 8h16a8 8 0 0 1 8 8v26a8 8 0 0 1-8 8H24l4-9-6-8 6-8-6-8z" fill="none" stroke="#8a8398" stroke-width="3" stroke-linejoin="round" />
+  </g>
+</svg>

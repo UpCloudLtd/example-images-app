@@ -6,7 +6,11 @@
 
 Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) or a built-in generator when the AI generator is not available.
 
-## Run with Docker Compose
+## Getting Started
+
+The following instructions will help you get the application up and running.
+
+### Run with Docker Compose
 
 ```sh
 docker compose up --build
@@ -22,7 +26,7 @@ docker compose --profile generator up --build
 
 The generator runs on CPU in Docker, which is slow. The backend uses the AI generator while it polls for pending images, and falls back to the built-in generator if the AI generator has not polled within the last minute.
 
-## Run the generator locally
+### Run the generator locally
 
 To use the Apple Silicon GPU (MPS), run the generator natively and everything else in Docker Compose (requires Python 3.10+):
 
@@ -38,7 +42,7 @@ To use the Apple Silicon GPU (MPS), run the generator natively and everything el
 | `HF_TOKEN`        | Hugging Face token for model downloads               |                         |
 | `IMAGE_DEVICE`    | `auto`, `cpu`, `cuda` or `mps`                       | `auto`                  |
 
-## Tests
+## Testing
 
 Backend tests use the Compose database and object storage with a separate `images_test` table and `images-test` bucket:
 

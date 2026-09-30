@@ -1,6 +1,8 @@
 import hmac
 import logging
 import os
+import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from functools import wraps
@@ -25,6 +27,8 @@ S3_BUCKET = os.environ.get("S3_BUCKET", "images")
 GENERATOR_TOKEN = os.environ.get("GENERATOR_TOKEN", "")
 # States the generator may set, mapped to the states they may be set from.
 GENERATOR_STATE_TRANSITIONS = {"generating": {"pending"}, "error": {"pending", "generating"}}
+# Same alphabet as Kubernetes generated name suffixes: no vowels or look-alike characters.
+FILENAME_SUFFIX_ALPHABET = "bcdfghjklmnpqrstvwxz2456789"
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(name)s: %(message)s")
 
@@ -79,6 +83,14 @@ def image_to_dict(image: Image):
         "requested_at": image.requested_at.isoformat(),
         "generated_at": image.generated_at.isoformat() if image.generated_at else None,
     }
+
+
+def generate_filename(description: str):
+    slug = re.sub(r"\s+", "-", description.lower())
+    slug = re.sub(r"[^a-z-]", "", slug)
+    slug = re.sub(r"-+", "-", slug).strip("-")[:18].rstrip("-")
+    suffix = "".join(secrets.choice(FILENAME_SUFFIX_ALPHABET) for _ in range(5))
+    return f"{slug}-{suffix}.png" if slug else f"{suffix}.png"
 
 
 def require_generator_token(view):
@@ -154,7 +166,7 @@ def create_image():
         return jsonify({"error": "description is required"}), 400
 
     object_key = str(uuid.uuid4())
-    filename = f"{object_key}.png"
+    filename = generate_filename(description)
     requested_at = datetime.now(timezone.utc)
 
     with Session.begin() as session:
@@ -184,7 +196,12 @@ def get_image(image_id):
         object_key = image.object_key
 
     obj = s3.get_object(Bucket=S3_BUCKET, Key=object_key)
-    return Response(obj["Body"].read(), mimetype=obj.get("ContentType", "application/octet-stream"))
+    headers = {"Content-Disposition": obj["ContentDisposition"]} if obj.get("ContentDisposition") else None
+    return Response(
+        obj["Body"].read(),
+        mimetype=obj.get("ContentType", "application/octet-stream"),
+        headers=headers,
+    )
 
 
 @app.put("/api/images/<int:image_id>/image")
@@ -212,8 +229,15 @@ def upload_image(image_id):
         if image.state != "generating":
             return jsonify({"error": f"cannot upload image in state {image.state}"}), 409
         object_key = image.object_key
+        filename = image.filename
 
-    s3.put_object(Bucket=S3_BUCKET, Key=object_key, Body=data, ContentType="image/png")
+    s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=object_key,
+        Body=data,
+        ContentType="image/png",
+        ContentDisposition=f'inline; filename="{filename}"',
+    )
 
     with Session.begin() as session:
         image = session.get(Image, image_id, with_for_update=True)

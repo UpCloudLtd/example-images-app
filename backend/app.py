@@ -88,7 +88,7 @@ def image_to_dict(image: Image):
 
 def generate_filename(description: str):
     slug = re.sub(r"\s+", "-", description.lower())
-    slug = re.sub(r"[^a-z-]", "", slug)
+    slug = re.sub(r"[^a-z0-9-]", "", slug)
     slug = re.sub(r"-+", "-", slug).strip("-")[:18].rstrip("-")
     suffix = "".join(secrets.choice(FILENAME_SUFFIX_ALPHABET) for _ in range(5))
     return f"{slug}-{suffix}.png" if slug else f"{suffix}.png"

@@ -33,7 +33,8 @@ class GenerateFilenameTest(unittest.TestCase):
         cases = [
             ("Riva del Garda", rf"riva-del-garda-{SUFFIX}\.png"),
             ("Donkey running in Helsinki", rf"donkey-running-in-{SUFFIX}\.png"),
-            ("Rock & Roll  2026!", rf"rock-roll-{SUFFIX}\.png"),
+            ("Rock & Roll  2026!", rf"rock-roll-2026-{SUFFIX}\.png"),
+            ("42", rf"42-{SUFFIX}\.png"),
             ("日本の桜", rf"{SUFFIX}\.png"),
         ]
         for description, pattern in cases:

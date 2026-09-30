@@ -1,6 +1,6 @@
-# Image generator demo
+# Images example application
 
-Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B).
+Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) or a built-in generator when the AI generator is not available.
 
 ## Run with Docker Compose
 

@@ -76,7 +76,8 @@
   .status {
     /* Bleed over the card padding so the image reaches the card edges. */
     width: calc(100% + 2 * var(--card-padding));
-    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding)) 0.25rem;
+    margin: calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding))
+      0.25rem;
     aspect-ratio: 1;
   }
   img {
@@ -112,6 +113,10 @@
     overflow-wrap: anywhere;
     margin: 0.333em 0;
     overflow-wrap: anywhere;
+  }
+  p {
+    height: 44px;
+    overflow-y: scroll;
   }
   .timestamps {
     display: grid;

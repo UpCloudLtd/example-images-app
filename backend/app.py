@@ -24,6 +24,7 @@ S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "http://localhost:9000")
 S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "rustfsadmin")
 S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "rustfsadmin")
 S3_BUCKET = os.environ.get("S3_BUCKET", "images")
+IMAGES_TABLE = os.environ.get("IMAGES_TABLE", "images")
 GENERATOR_TOKEN = os.environ.get("GENERATOR_TOKEN", "")
 # States the generator may set, mapped to the states they may be set from.
 GENERATOR_STATE_TRANSITIONS = {"generating": {"pending"}, "error": {"pending", "generating"}}
@@ -49,9 +50,9 @@ class Base(DeclarativeBase):
 
 
 class Image(Base):
-    __tablename__ = "images"
+    __tablename__ = IMAGES_TABLE
     __table_args__ = (
-        CheckConstraint("state IN ('pending', 'generating', 'ready', 'error')", name="images_state_check"),
+        CheckConstraint("state IN ('pending', 'generating', 'ready', 'error')", name=f"{IMAGES_TABLE}_state_check"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

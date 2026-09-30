@@ -5,10 +5,10 @@ Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https:/
 ## Run with Docker Compose
 
 ```sh
-docker compose up --build
+docker compose --profile generator up --build
 ```
 
-Open http://localhost:5173. The generator runs on CPU in Docker, which is slow.
+Open http://localhost:5173. The generator runs on CPU in Docker, which is slow. Without `--profile generator`, only the database, object storage, backend, and frontend are started.
 
 ## Run the generator locally
 

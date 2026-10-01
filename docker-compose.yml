@@ -50,10 +50,7 @@ services:
 
   generator:
     profiles: ["generator"]
-    build:
-      context: ./generator
-      args:
-        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+    build: ./generator
     environment:
       BACKEND_URL: http://backend:5000
       GENERATOR_TOKEN: ${GENERATOR_TOKEN:-local-generator-token}

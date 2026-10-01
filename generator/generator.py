@@ -91,6 +91,9 @@ def process(image: dict):
 
 
 def main():
+    # Preload the image generation pipeline to reduce latency on the first request.
+    get_pipeline()
+
     logger.info("Polling %s for pending images every %s seconds", BACKEND_URL, POLL_INTERVAL)
     while True:
         try:

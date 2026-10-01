@@ -40,6 +40,17 @@ variable "objsto_secret_key" {
   sensitive = true
 }
 
+variable "pvc_storage_class" {
+  type    = string
+  default = ""
+}
+
+variable "enable_generator" {
+  type        = bool
+  description = "Deploy the image generator. Requires a node with a GPU."
+  default     = false
+}
+
 variable "frontend_service_annotations" {
   type    = map(string)
   default = {}

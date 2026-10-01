@@ -1,4 +1,7 @@
 locals {
+  # Apply the official NVIDIA vendor PCI presence label to GPU nodes
+  ng_labels = startswith(var.worker_plan, "GPU-") ? { "feature.node.kubernetes.io/pci-10de.present" = "true" } : {}
+
   # Parse hostname from URL for certificate and invalid host rule
   hostname = var.url == "" ? "" : regex("https{0,1}://(?<hostname>[^/]+)", var.url).hostname
   # Rules for the service annotations

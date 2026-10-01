@@ -52,6 +52,7 @@ resource "upcloud_kubernetes_node_group" "default" {
   node_count  = 1
   name_prefix = "default"
   plan        = var.worker_plan
+  labels      = local.ng_labels
 
   lifecycle {
     create_before_destroy = true

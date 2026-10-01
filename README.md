@@ -44,6 +44,8 @@ To use the Apple Silicon GPU (MPS), run the generator natively and everything el
 
 ## Testing
 
+### Backend
+
 Backend tests use the Compose database and object storage with a separate `images_test` table and `images-test` bucket:
 
 ```sh
@@ -54,6 +56,8 @@ python3 -m venv .venv
 .venv/bin/python -m unittest
 ```
 
+### Frontend
+
 Frontend tests:
 
 ```sh
@@ -61,3 +65,34 @@ cd frontend
 npm install
 npm test
 ```
+
+### End-to-End
+
+End-to-end tests use [Playwright](https://playwright.dev) to generate, view, list, and delete images in a browser, using the built-in generator. They run in containers with the `test` profile:
+
+```sh
+docker compose --profile test run --build --rm test
+```
+
+This starts the database, object storage, backend, and frontend if they are not already running, and runs the tests against the frontend. The services are left running afterwards. The tests create images through the UI and delete them again when they finish. They only delete the images they created and check that these are gone, so existing images are never modified or deleted. The Playwright report and traces of failed tests are written to `test/playwright-report` and `test/test-results`.
+
+The tests require the built-in generator, so no AI generator may be running. If one has polled the backend within the last minute, the tests fail before creating anything and say so. Stop the generator and try again after a minute.
+
+#### Playwright UI
+
+To explore, run, and debug the tests with [Playwright UI mode](https://playwright.dev/docs/test-ui-mode), run Playwright on your machine against the application. Start the application and install Playwright (requires Node.js):
+
+```sh
+docker compose up -d --build
+cd test
+npm install
+npx playwright install chromium
+```
+
+Then open the UI:
+
+```sh
+npm run test:ui
+```
+
+The tests use the application at http://localhost:5173 by default. Set the `BASE_URL` environment variable to test another instance. Use `npm test` to run the tests headless from your machine and `npx playwright show-report` to open the report of the last run.

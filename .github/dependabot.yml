@@ -21,6 +21,13 @@ updates:
     cooldown:
       default-days: 7
 
+  - package-ecosystem: npm
+    directory: /test
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

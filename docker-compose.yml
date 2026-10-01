@@ -36,6 +36,11 @@ services:
       GENERATOR_TOKEN: ${GENERATOR_TOKEN:-local-generator-token}
     ports:
       - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/generator')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
     depends_on:
       db:
         condition: service_healthy
@@ -67,8 +72,29 @@ services:
       BACKEND_URL: http://backend:5000
     ports:
       - "5173:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+  # Runs the end-to-end tests against the frontend and backend services above.
+  test:
+    profiles: ["test"]
+    build: ./test
+    environment:
+      BASE_URL: http://frontend
+      CI: ${CI:-}
+      WAIT_FOR_AI_MODEL: ${WAIT_FOR_AI_MODEL:-}
+    volumes:
+      - ./test/playwright-report:/app/playwright-report
+      - ./test/test-results:/app/test-results
+    depends_on:
+      frontend:
+        condition: service_healthy
 
 volumes:
   db-data:

@@ -117,6 +117,8 @@
   p {
     height: 44px;
     overflow-y: scroll;
+    scrollbar-color: var(--muted) transparent;
+    scrollbar-width: thin;
   }
   .timestamps {
     display: grid;

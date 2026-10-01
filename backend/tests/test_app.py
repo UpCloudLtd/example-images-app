@@ -24,13 +24,13 @@ def png_bytes():
 
 
 def empty_bucket():
-    for obj in api.s3.list_objects_v2(Bucket=api.S3_BUCKET).get("Contents", []):
-        api.s3.delete_object(Bucket=api.S3_BUCKET, Key=obj["Key"])
+    for obj in api.s3.list_objects_v2(Bucket=api.OBJSTO_BUCKET).get("Contents", []):
+        api.s3.delete_object(Bucket=api.OBJSTO_BUCKET, Key=obj["Key"])
 
 
 def tearDownModule():
     empty_bucket()
-    api.s3.delete_bucket(Bucket=api.S3_BUCKET)
+    api.s3.delete_bucket(Bucket=api.OBJSTO_BUCKET)
     api.Base.metadata.drop_all(api.engine)
 
 
@@ -225,7 +225,7 @@ class ImagesApiTest(unittest.TestCase):
         self.assertIsNotNone(response.get_json()["generated_at"])
 
         disposition = f'inline; filename="{image["filename"]}"'
-        stored = api.s3.head_object(Bucket=api.S3_BUCKET, Key=image["id"])
+        stored = api.s3.head_object(Bucket=api.OBJSTO_BUCKET, Key=image["id"])
         self.assertEqual(stored["ContentType"], "image/png")
         self.assertEqual(stored["ContentDisposition"], disposition)
 
@@ -243,7 +243,7 @@ class ImagesApiTest(unittest.TestCase):
         self.assertEqual(self.client.delete(f"/api/images/{image['id']}").status_code, 200)
         self.assertEqual(self.client.get("/api/images").get_json(), [])
         with self.assertRaises(ClientError):
-            api.s3.head_object(Bucket=api.S3_BUCKET, Key=image["id"])
+            api.s3.head_object(Bucket=api.OBJSTO_BUCKET, Key=image["id"])
 
 
 if __name__ == "__main__":

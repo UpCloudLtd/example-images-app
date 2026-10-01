@@ -78,6 +78,17 @@ This starts the database, object storage, backend, and frontend if they are not 
 
 The tests require the built-in generator, so no AI generator may be running. If one has polled the backend within the last minute, the tests fail before creating anything and say so. Stop the generator and try again after a minute.
 
+#### Testing with an AI model
+
+To test the AI generator instead, start it and set `WAIT_FOR_AI_MODEL` to any non-empty value:
+
+```sh
+docker compose --profile generator up -d --build
+WAIT_FOR_AI_MODEL=1 docker compose --profile test run --build --rm test
+```
+
+The tests then wait up to 30 minutes for an AI generator to poll the backend (the model may still be loading) and check that the images were generated with the model it reports. Generating images with an AI model is slow, so the timeouts are longer in this mode.
+
 #### Playwright UI
 
 To explore, run, and debug the tests with [Playwright UI mode](https://playwright.dev/docs/test-ui-mode), run Playwright on your machine against the application. Start the application and install Playwright (requires Node.js):

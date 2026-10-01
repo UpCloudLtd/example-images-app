@@ -2,23 +2,48 @@ import { randomUUID } from 'node:crypto';
 import { expect, test as base } from '@playwright/test';
 
 const BUILTIN_MODEL = 'builtin/text-on-shapes';
+// Any non-empty value makes the tests wait for an AI generator instead of requiring the built-in one.
+const WAIT_FOR_AI_MODEL = !!process.env.WAIT_FOR_AI_MODEL;
+const AI_MODEL_WAIT_MS = 30 * 60_000;
 const FILENAME = /^[a-z0-9-]+-[bcdfghjklmnpqrstvwxz2456789]{5}\.png$/;
 const TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const IMAGE_PATH = /^\/api\/images\/[0-9a-f-]{36}\/image$/;
 
 const test = base.extend({
-  // The tests run against the real application, so each test deletes the images it created
-  // (and only those) and then checks that they are gone.
-  createdImages: [
-    async ({ page, request }, use) => {
-      const generator = await (await request.get('/api/generator')).json();
-      if (generator.model !== BUILTIN_MODEL) {
+  // The model the backend reports: the built-in generator by default, or the AI model with WAIT_FOR_AI_MODEL.
+  generatorModel: [
+    async ({ request }, use) => {
+      const current = async () => (await (await request.get('/api/generator')).json()).model;
+      let model = await current();
+
+      if (WAIT_FOR_AI_MODEL) {
+        const deadline = Date.now() + AI_MODEL_WAIT_MS;
+        while (model === BUILTIN_MODEL && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          model = await current();
+        }
+        if (model === BUILTIN_MODEL) {
+          throw new Error('WAIT_FOR_AI_MODEL is set, but no AI generator came online. Start the generator.');
+        }
+      } else if (model !== BUILTIN_MODEL) {
         throw new Error(
-          `These tests need the built-in generator, but ${generator.model} is online. ` +
-            'Stop the generator and wait a minute for the backend to consider it offline.'
+          `These tests need the built-in generator, but ${model} is online. ` +
+            'Stop the generator and wait a minute for the backend to consider it offline, ' +
+            'or set WAIT_FOR_AI_MODEL to test with the AI generator.'
         );
       }
 
+      await use(model);
+    },
+    // The wait counts against the fixture instead of the test timeout.
+    { ...(WAIT_FOR_AI_MODEL ? { timeout: AI_MODEL_WAIT_MS + 60_000 } : {}) }
+  ],
+
+  // The tests run against the real application, so each test deletes the images it created
+  // (and only those) and then checks that they are gone.
+  createdImages: [
+    async ({ page, request, generatorModel }, use) => {
+      void generatorModel;
       const ids = [];
       const pending = [];
       page.on('response', (response) => {
@@ -50,13 +75,14 @@ async function generate(page, text) {
   return card(page, text);
 }
 
-test('shows that the built-in generator is used', async ({ page }) => {
+test('shows which generator is used', async ({ page, generatorModel }) => {
   await page.goto('/');
 
-  await expect(page.getByText('Generating images with')).toContainText(BUILTIN_MODEL);
+  // Existing images in the list may contain the same text, so only look at the help text.
+  await expect(page.locator('p.helptext').filter({ hasText: 'Generating images with' })).toContainText(generatorModel);
 });
 
-test('generates an image from a description', async ({ page, request }) => {
+test('generates an image from a description', async ({ page, request, generatorModel }) => {
   const text = description('generate');
   await page.goto('/');
 
@@ -68,7 +94,8 @@ test('generates an image from a description', async ({ page, request }) => {
   await expect(page.getByLabel('Description')).toHaveValue('');
 
   const created = (await (await request.get('/api/images')).json()).find((item) => item.description === text);
-  expect(created).toMatchObject({ state: 'ready', state_details: `Generated with ${BUILTIN_MODEL}.` });
+  expect(created.state).toBe('ready');
+  expect(created.state_details).toContain(`Generated with ${generatorModel}`);
 });
 
 test('shows an error when the description is empty', async ({ page }) => {

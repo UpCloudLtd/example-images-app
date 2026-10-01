@@ -4,7 +4,7 @@
 
 # Images example application
 
-Generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) or a built-in generator when the AI generator is not available.
+This is an example application used to demonstrate how to deploy an application using various different managed cloud services. The application generates 1024x1024 images from text descriptions with [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B) model (or a built-in generator when the AI generator is not available) and stores the images in object storage using a database to keep track of available images and their states.
 
 ## Getting Started
 

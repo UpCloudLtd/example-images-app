@@ -1,11 +1,9 @@
-FROM python:3.12-slim
+FROM pytorch/pytorch:2.14.1-cuda13.2-cudnn9-runtime
 
 WORKDIR /app
 
 COPY requirements.txt .
-ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir --index-url "$TORCH_INDEX_URL" "torch>=2.4.0" \
-	&& pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 COPY generator.py .
 

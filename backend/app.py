@@ -23,10 +23,10 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://images:images@localh
 DATABASE_DRIVER = "postgresql+psycopg"
 engine = create_engine(make_url(DATABASE_URL).set(drivername=DATABASE_DRIVER))
 Session = sessionmaker(bind=engine)
-S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL", "http://localhost:9000")
-S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "rustfsadmin")
-S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "rustfsadmin")
-S3_BUCKET = os.environ.get("S3_BUCKET", "images")
+OBJSTO_ENDPOINT_URL = os.environ.get("OBJSTO_ENDPOINT_URL", "http://localhost:9000")
+OBJSTO_ACCESS_KEY = os.environ.get("OBJSTO_ACCESS_KEY", "rustfsadmin")
+OBJSTO_SECRET_KEY = os.environ.get("OBJSTO_SECRET_KEY", "rustfsadmin")
+OBJSTO_BUCKET = os.environ.get("OBJSTO_BUCKET", "images")
 IMAGES_TABLE = os.environ.get("IMAGES_TABLE", "images")
 GENERATORS_TABLE = os.environ.get("GENERATORS_TABLE", "generators")
 # A generator is considered offline if it has not polled for pending images within this time.
@@ -44,9 +44,9 @@ app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
 s3 = boto3.client(
     "s3",
-    endpoint_url=S3_ENDPOINT_URL,
-    aws_access_key_id=S3_ACCESS_KEY,
-    aws_secret_access_key=S3_SECRET_KEY,
+    endpoint_url=OBJSTO_ENDPOINT_URL,
+    aws_access_key_id=OBJSTO_ACCESS_KEY,
+    aws_secret_access_key=OBJSTO_SECRET_KEY,
     region_name="us-east-1",
 )
 
@@ -81,7 +81,7 @@ class Generator(Base):
 def init():
     Base.metadata.create_all(engine)
     try:
-        s3.create_bucket(Bucket=S3_BUCKET)
+        s3.create_bucket(Bucket=OBJSTO_BUCKET)
     except ClientError as err:
         if err.response["Error"]["Code"] not in ("BucketAlreadyOwnedByYou", "BucketAlreadyExists"):
             raise
@@ -119,7 +119,7 @@ def active_generator_model():
 
 def store_image(image_id: uuid.UUID, filename: str, data: bytes):
     s3.put_object(
-        Bucket=S3_BUCKET,
+        Bucket=OBJSTO_BUCKET,
         Key=str(image_id),
         Body=data,
         ContentType="image/png",
@@ -263,7 +263,7 @@ def get_image(image_id):
         if image.state != "ready":
             return jsonify({"error": "image is not ready", "state_details": image.state_details}), 409
 
-    obj = s3.get_object(Bucket=S3_BUCKET, Key=str(image_id))
+    obj = s3.get_object(Bucket=OBJSTO_BUCKET, Key=str(image_id))
     headers = {"Content-Disposition": obj["ContentDisposition"]} if obj.get("ContentDisposition") else None
     return Response(
         obj["Body"].read(),
@@ -303,7 +303,7 @@ def upload_image(image_id):
     with Session.begin() as session:
         image = session.get(Image, image_id, with_for_update=True)
         if image is None:
-            s3.delete_object(Bucket=S3_BUCKET, Key=str(image_id))
+            s3.delete_object(Bucket=OBJSTO_BUCKET, Key=str(image_id))
             return jsonify({"error": "not found"}), 404
         if image.state != "generating":
             return jsonify({"error": f"cannot upload image in state {image.state}"}), 409
@@ -323,7 +323,7 @@ def delete_image(image_id):
             return jsonify({"error": "not found"}), 404
         session.delete(image)
 
-    s3.delete_object(Bucket=S3_BUCKET, Key=str(image_id))
+    s3.delete_object(Bucket=OBJSTO_BUCKET, Key=str(image_id))
     return jsonify({"id": str(image_id)})
 
 

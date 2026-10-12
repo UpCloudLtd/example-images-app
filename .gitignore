@@ -4,3 +4,10 @@ __pycache__/
 dist/
 playwright-report/
 test-results/
+
+terraform.tfstate*
+.terraform.lock.hcl
+.terraform/
+*.tfvars
+
+*kubeconfig.yaml

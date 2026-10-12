@@ -91,13 +91,13 @@ resource "upcloud_managed_object_storage" "this" {
   }
 }
 
-resource "upcloud_managed_object_storage_user" "django" {
-  username     = "django"
+resource "upcloud_managed_object_storage_user" "images" {
+  username     = "images"
   service_uuid = upcloud_managed_object_storage.this.id
 }
 
-resource "upcloud_managed_object_storage_user_access_key" "django" {
-  username     = upcloud_managed_object_storage_user.django.username
+resource "upcloud_managed_object_storage_user_access_key" "images" {
+  username     = upcloud_managed_object_storage_user.images.username
   service_uuid = upcloud_managed_object_storage.this.id
   status       = "Active"
 }
@@ -118,9 +118,9 @@ resource "upcloud_managed_object_storage_policy" "full_access" {
   service_uuid = upcloud_managed_object_storage.this.id
 }
 
-resource "upcloud_managed_object_storage_user_policy" "django_full_access" {
+resource "upcloud_managed_object_storage_user_policy" "images_full_access" {
   name         = upcloud_managed_object_storage_policy.full_access.name
-  username     = upcloud_managed_object_storage_user.django.username
+  username     = upcloud_managed_object_storage_user.images.username
   service_uuid = upcloud_managed_object_storage.this.id
 }
 

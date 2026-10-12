@@ -10,8 +10,8 @@ output "db_connect_url" {
 
 output "objsto" {
   value = {
-    access_key = upcloud_managed_object_storage_user_access_key.django.access_key_id
-    secret_key = upcloud_managed_object_storage_user_access_key.django.secret_access_key
+    access_key = upcloud_managed_object_storage_user_access_key.images.access_key_id
+    secret_key = upcloud_managed_object_storage_user_access_key.images.secret_access_key
     host       = tolist(upcloud_managed_object_storage.this.endpoint)[0].domain_name
   }
 }

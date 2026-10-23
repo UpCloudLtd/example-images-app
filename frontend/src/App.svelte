@@ -88,7 +88,7 @@
 
   <ul>
     {#each images as image (image.id)}
-      <ImageCard {image} on:delete={(event) => remove(event.detail)} />
+      <ImageCard {image} ondelete={remove} />
     {/each}
   </ul>
 </main>

@@ -40,8 +40,7 @@ describe('ImageCard', () => {
 
   it('dispatches delete with the image id', async () => {
     const onDelete = vi.fn();
-    const { component } = render(ImageCard, { image });
-    component.$on('delete', (event) => onDelete(event.detail));
+    render(ImageCard, { image, ondelete: onDelete });
 
     await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 

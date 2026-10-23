@@ -5,7 +5,7 @@ variable "url" {
 
 variable "registry_base" {
   type    = string
-  default = ""
+  default = "ghcr.io/upcloudltd/example-images-app/"
 }
 
 variable "app_version" {

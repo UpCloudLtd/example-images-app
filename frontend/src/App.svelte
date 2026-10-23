@@ -1,8 +1,12 @@
 <script>
   import { onMount } from "svelte";
+  import Card from "./Card.svelte";
   import ImageCard from "./ImageCard.svelte";
 
+  const example = "Elephant in the room";
+
   let images = [];
+  let loaded = false;
   let generatorModel = "";
   let description = "";
   let generating = false;
@@ -10,14 +14,24 @@
 
   async function load() {
     images = await (await fetch("/api/images")).json();
+    loaded = true;
   }
 
   async function loadGenerator() {
     generatorModel = (await (await fetch("/api/generator")).json()).model;
   }
 
-  async function generate(event) {
+  function generate(event) {
     event.preventDefault();
+    return submit(description, true);
+  }
+
+  function generateExample(event) {
+    event.preventDefault();
+    return submit(example, false);
+  }
+
+  async function submit(text, clearInput) {
     if (generating) return;
 
     generating = true;
@@ -26,7 +40,7 @@
       const response = await fetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({ description: text }),
       });
       const result = await response.json();
       if (!response.ok) {
@@ -34,7 +48,7 @@
         return;
       }
 
-      description = "";
+      if (clearInput) description = "";
       await load();
     } catch {
       error = "could not connect to the image generation service";
@@ -86,11 +100,25 @@
     <p class="helptext">Generating images with <code>{generatorModel}</code></p>
   {/if}
 
-  <ul>
-    {#each images as image (image.id)}
-      <ImageCard {image} ondelete={remove} />
-    {/each}
-  </ul>
+  {#if loaded && images.length === 0}
+    <div class="empty">
+      <Card>
+        <div class="empty-content">
+          <p>No images yet.</p>
+          <p class="example">
+            Try for example:
+            <a href="#generate-example" on:click={generateExample}>{example}</a>
+          </p>
+        </div>
+      </Card>
+    </div>
+  {:else}
+    <ul>
+      {#each images as image (image.id)}
+        <ImageCard {image} ondelete={remove} />
+      {/each}
+    </ul>
+  {/if}
 </main>
 
 <footer>
@@ -121,7 +149,15 @@
     background: var(--background);
     color: var(--text);
   }
+  :global(#app) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
   main {
+    flex: 1;
+    box-sizing: border-box;
+    width: 100%;
     font-family: sans-serif;
     max-width: 60rem;
     margin: 0 auto;
@@ -195,6 +231,36 @@
     margin: 3.5rem 0 0;
     list-style: none;
     padding: 0;
+  }
+  .empty {
+    max-width: 36rem;
+    margin: 3.5rem auto 0;
+  }
+  .empty-content {
+    padding: 1.5rem 0.333rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .empty-content p {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+  .empty-content .example {
+    margin-top: 1.25rem;
+    font-size: 0.875rem;
+  }
+  .empty-content a {
+    color: var(--theme-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    text-decoration: none;
+  }
+  .empty-content a:hover {
+    text-decoration: underline;
+  }
+  .empty-content a:focus-visible {
+    border-radius: 0.25rem;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
   }
   .helptext {
     margin: 0;

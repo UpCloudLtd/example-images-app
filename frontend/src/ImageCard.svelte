@@ -1,4 +1,6 @@
 <script>
+  import Card from "./Card.svelte";
+
   let { image, ondelete } = $props();
 
   function formatDate(value) {
@@ -6,7 +8,7 @@
   }
 </script>
 
-<li>
+<Card tag="li">
   {#if image.state === "ready"}
     <img src="/api/images/{image.id}/image" alt={image.description} />
   {:else if image.state === "error"}
@@ -55,19 +57,9 @@
       onclick={() => ondelete(image.id)}>Delete</button
     >
   </div>
-</li>
+</Card>
 
 <style>
-  li {
-    --card-padding: 0.666rem;
-    display: flex;
-    flex-direction: column;
-    padding: var(--card-padding);
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    background: var(--surface);
-    overflow: hidden;
-  }
   img,
   .status {
     /* Bleed over the card padding so the image reaches the card edges. */

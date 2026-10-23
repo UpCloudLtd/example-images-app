@@ -66,6 +66,33 @@ describe('App', () => {
     expect(screen.getAllByText('N/A')).toHaveLength(2);
   });
 
+  it('shows an empty state with an example that generates an image', async () => {
+    fetchMock.mockImplementation((url) =>
+      url === '/api/generator' ? response({ model: 'builtin/text-on-shapes' }) : response([])
+    );
+    render(App);
+
+    const link = await screen.findByRole('link', { name: 'Elephant in the room' });
+    expect(screen.getByText(/Try for example:/)).toBeTruthy();
+
+    await fireEvent.click(link);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'Elephant in the room' })
+      })
+    );
+  });
+
+  it('does not show the empty state when there are images', async () => {
+    render(App);
+    await screen.findByAltText('Riva del Garda');
+
+    expect(screen.queryByText(/Try for example:/)).toBeNull();
+  });
+
   it('links to the source repository in the footer', () => {
     render(App);
 

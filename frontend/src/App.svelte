@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import Card from "./Card.svelte";
   import ImageCard from "./ImageCard.svelte";
 
   const example = "Elephant in the room";
@@ -101,11 +102,15 @@
 
   {#if loaded && images.length === 0}
     <div class="empty">
-      <p>No images yet.</p>
-      <p class="example">
-        Try for example:
-        <a href="#generate-example" on:click={generateExample}>{example}</a>
-      </p>
+      <Card>
+        <div class="empty-content">
+          <p>No images yet.</p>
+          <p class="example">
+            Try for example:
+            <a href="#generate-example" on:click={generateExample}>{example}</a>
+          </p>
+        </div>
+      </Card>
     </div>
   {:else}
     <ul>
@@ -230,31 +235,29 @@
   .empty {
     max-width: 36rem;
     margin: 3.5rem auto 0;
-    padding: 2rem 1rem;
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    box-sizing: border-box;
-    background: var(--surface);
+  }
+  .empty-content {
+    padding: 1.5rem 0.333rem;
     color: var(--muted);
     text-align: center;
   }
-  .empty p {
+  .empty-content p {
     margin: 0;
     font-size: 1.125rem;
   }
-  .empty .example {
+  .empty-content .example {
     margin-top: 1.25rem;
     font-size: 0.875rem;
   }
-  .empty a {
+  .empty-content a {
     color: var(--theme-text);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     text-decoration: none;
   }
-  .empty a:hover {
+  .empty-content a:hover {
     text-decoration: underline;
   }
-  .empty a:focus-visible {
+  .empty-content a:focus-visible {
     border-radius: 0.25rem;
     outline: 2px solid #fff;
     outline-offset: 2px;

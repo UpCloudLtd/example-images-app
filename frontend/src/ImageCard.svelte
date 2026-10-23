@@ -1,9 +1,5 @@
 <script>
-  import { createEventDispatcher } from "svelte";
-
-  export let image;
-
-  const dispatch = createEventDispatcher();
+  let { image, ondelete } = $props();
 
   function formatDate(value) {
     return new Date(value).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -56,7 +52,7 @@
     <button
       type="button"
       class="delete"
-      on:click={() => dispatch("delete", image.id)}>Delete</button
+      onclick={() => ondelete(image.id)}>Delete</button
     >
   </div>
 </li>

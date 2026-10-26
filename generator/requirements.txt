@@ -1,5 +1,5 @@
 torch>=2.14.1
-transformers>=5.20.0
+transformers>=5.20.1
 diffusers==0.41.0
 accelerate
 requests>=2.34.2

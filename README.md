@@ -8,7 +8,9 @@ This is an example application used to demonstrate how to deploy an application 
 
 ## Getting Started
 
-The following instructions will help you get the application up and running locally. For IaC configuration that deploys the application using UpCloud managed services, see [iac/tf/](./iac/tf/) directory.
+The following instructions will help you get the application up and running locally.
+
+For IaC configuration that deploys the application using UpCloud managed services, see [iac/tf/](./iac/tf/) directory.
 
 ### Run with Docker Compose
 
